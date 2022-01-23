@@ -32,6 +32,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     
     # Handle a GET request
     def do_GET(self):
+        # print(os.getcwd())  # this is from where the python cmd is executed
         try:
             # library always assigns path as self.path (with leading '/')
             full_path = os.getcwd() + self.path
@@ -57,7 +58,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_error(self, msg):
         content = self.Error_Page.format(path=self.path, msg=msg)
-        self.send_content(content, 404)
+        self.send_content(content.encode(), 404)  # why the need to encode here? needs to be a bytes object?
     
     
     def send_content(self, content, status=200):
@@ -65,7 +66,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html")
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
-        self.wfile.write(content.encode())
+        self.wfile.write(content)  # no need to encode here?
 
     
     def create_page(self):
