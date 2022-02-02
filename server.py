@@ -1,4 +1,5 @@
 import os
+import sys
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -50,7 +51,16 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             with open(full_path, 'rb') as infile:
                 content = infile.read()
-            self.send_content(content)
+            file_extension = full_path.split('.')[-1]
+            if file_extension == "png":
+                self.send_content(content, "image/png")
+            elif file_extension == "jpeg":  # TODO: doesn't catch all (i.e., .jpg)
+                self.send_content(content, "image/jpeg")
+            elif file_extension == "csv":
+                # TODO
+                pass
+            else:
+                self.send_content(content, "text/html")
         except IOError as e:
             e = f"'{self.path}' cannot be read: {e}"
             self.handle_error(e)
@@ -58,15 +68,15 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_error(self, msg):
         content = self.Error_Page.format(path=self.path, msg=msg)
-        self.send_content(content.encode(), 404)  # why the need to encode here? needs to be a bytes object?
+        self.send_content(content.encode(), 404)  # need to convert str message to bytes with encod
     
     
-    def send_content(self, content, status=200):
+    def send_content(self, content, content_type, status=200):
         self.send_response(status)
-        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
-        self.wfile.write(content)  # no need to encode here?
+        self.wfile.write(content)  # no encode because already in bytes
 
     
     def create_page(self):
