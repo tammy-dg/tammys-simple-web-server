@@ -34,12 +34,23 @@ class RequestHandler(BaseHTTPRequestHandler):
         </html>
         """
     
+    # def __init__(self, args):
+    #     if args.root_dir is not None:
+    #         self.base_path = args.root
+    #     else:
+    #         self.base_path = os.getcwd()
+
+    
     # Handle a GET request
-    def do_GET(self):
-        # print(os.getcwd())  # this is from where the python cmd is executed
+    def do_GET(self):  # how is this called?
+        args = _parse_args()  # feel like this can be handled somehwere else
+        if args.root_dir is not None:
+            base_dir = args.root_dir
+        else:
+            base_dir = os.getcwd() # this is from where the python cmd is executed
         try:
             # library always assigns path as self.path (with leading '/')
-            full_path = os.getcwd() + self.path
+            full_path = base_dir + self.path
             if not os.path.exists(full_path):
                 raise ServerException(f"'{self.path}' not found")
             elif os.path.isfile(full_path):
@@ -107,6 +118,13 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(page.encode())
     
+
+def _parse_args():
+    parser = argparse.ArgumentParser(description='Initiate a web server')
+    parser.add_argument(
+        '--root-dir', '-dir', help=f"The root directory to deploy the server. If not provided then it will be the current dir: '{os.getcwd()}'")
+    args = parser.parse_args()
+    return args
 
 class ServerException(Exception):
     pass
