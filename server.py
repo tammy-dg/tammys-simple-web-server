@@ -1,5 +1,8 @@
+import argparse
 import os
 import sys
+
+import pandas as pd
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -57,13 +60,19 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif file_extension == "jpeg":  # TODO: doesn't catch all (i.e., .jpg)
                 self.send_content(content, "image/jpeg")
             elif file_extension == "csv":
-                # TODO
-                pass
+                content = self.convert_table_to_html(full_path)
+                self.send_content(content.encode(), "text/html")
             else:
                 self.send_content(content, "text/html")
         except IOError as e:
             e = f"'{self.path}' cannot be read: {e}"
             self.handle_error(e)
+
+
+    def convert_table_to_html(self, file_path):
+        content = pd.read_csv(file_path)
+        html_table = content.to_html(index=False, justify="left")
+        return html_table
 
 
     def handle_error(self, msg):

@@ -2,7 +2,7 @@
 
 Create conda env:
 ```
-mamba create -n webserver python
+mamba create -n webserver python pandas
 mamba activate webserver
 ```
 
