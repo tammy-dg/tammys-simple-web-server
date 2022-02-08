@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import cgi
 
 import pandas as pd
 
@@ -42,12 +43,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     
     # Handle a GET request
-    def do_GET(self):  # how is this called?
-        args = _parse_args()  # feel like this can be handled somehwere else
-        if args.root_dir is not None:
-            base_dir = args.root_dir
-        else:
-            base_dir = os.getcwd() # this is from where the python cmd is executed
+    def do_GET(self):  # how is this called?    
+        base_dir = os.getcwd() # this is from where the python cmd is executed
         try:
             # library always assigns path as self.path (with leading '/')
             full_path = base_dir + self.path
@@ -57,6 +54,42 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.handle_file(full_path)
             else:
                 raise ServerException(f"Unknown object: '{self.path}'")
+        except Exception as e:
+            self.handle_error(e)
+    
+    # Handle a POST request
+    def do_POST(self):
+        # https://stackoverflow.com/questions/28217869/python-basehttpserver-file-upload-with-maxfile-size
+        # somehow this is parsing from the form
+        try:
+            form = cgi.FieldStorage(
+                fp=self.rfile,  # specific to this class 
+                headers=self.headers,  # specific to this class 
+                environ={
+                    'REQUEST_METHOD':'POST',
+                    'CONTENT_TYPE':self.headers['Content-Type']
+                    }
+                )
+            filename = form["file"].filename
+            data = form["file"].file.read()
+            message = form["message"].value
+            self.save_file(data, filename)
+            success_message = f"File '{filename}' succesfully uploaded! {message}"
+            self.send_content(success_message.encode(), "text/html")
+        except Exception as e:
+            self.handle_error(e)
+
+    def save_file(self, data, filename):
+        base_dir = os.getcwd()
+        try:
+            target_path = os.path.join(base_dir, "uploaded_files", filename)
+            # check if file exists already and return error if it does 
+            if os.path.exists(target_path):
+                error_message = f"File '{filename}' already exists."
+                self.handle_error(error_message)
+            else:
+                with open(target_path, "wb") as outfile:
+                    outfile.write(data)
         except Exception as e:
             self.handle_error(e)
     
@@ -131,6 +164,9 @@ class ServerException(Exception):
 
 
 if __name__ == '__main__':
+    args = _parse_args()
+    if args.root_dir is not None:
+        os.chdir(args.root_dir)
     serverAddress = ('', 8787)
     server = HTTPServer(serverAddress, RequestHandler)
     server.serve_forever()
