@@ -62,6 +62,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         # https://stackoverflow.com/questions/28217869/python-basehttpserver-file-upload-with-maxfile-size
         # somehow this is parsing from the form
         try:
+            # TODO: validate that the content type sent was a form? 
             form = cgi.FieldStorage(
                 fp=self.rfile,  # specific to this class 
                 headers=self.headers,  # specific to this class 
@@ -70,19 +71,20 @@ class RequestHandler(BaseHTTPRequestHandler):
                     'CONTENT_TYPE':self.headers['Content-Type']
                     }
                 )
-            filename = form["file"].filename
-            data = form["file"].file.read()
+            filename = form["foo"].filename
+            data = form["foo"].file.read()
             message = form["message"].value
-            self.save_file(data, filename)
-            success_message = f"File '{filename}' succesfully uploaded! {message}"
-            self.send_content(success_message.encode(), "text/html")
+            self.save_file(data, filename, message)
         except Exception as e:
             self.handle_error(e)
 
-    def save_file(self, data, filename):
-        base_dir = os.getcwd()
+    def save_file(self, data, filename, message):
+        target_dir = os.path.join(os.getcwd(), "uploaded_files")
+        # check if desired directory to save files exists already
+        if not os.path.exists(target_dir):
+            os.mkdir(target_dir)
         try:
-            target_path = os.path.join(base_dir, "uploaded_files", filename)
+            target_path = os.path.join(target_dir, filename)
             # check if file exists already and return error if it does 
             if os.path.exists(target_path):
                 error_message = f"File '{filename}' already exists."
@@ -90,6 +92,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             else:
                 with open(target_path, "wb") as outfile:
                     outfile.write(data)
+                success_message = f"File '{filename}' succesfully uploaded!\n{message}"  # why don't new line work
+                self.send_content(success_message.encode(), "text/html")
         except Exception as e:
             self.handle_error(e)
     
@@ -101,7 +105,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             file_extension = full_path.split('.')[-1]
             if file_extension == "png":
                 self.send_content(content, "image/png")
-            elif file_extension == "jpeg":  # TODO: doesn't catch all (i.e., .jpg)
+            elif file_extension in ["jpeg", "jpg"]:
                 self.send_content(content, "image/jpeg")
             elif file_extension == "csv":
                 content = self.convert_table_to_html(full_path)
@@ -121,7 +125,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def handle_error(self, msg):
         content = self.Error_Page.format(path=self.path, msg=msg)
-        self.send_content(content.encode(), 404)  # need to convert str message to bytes with encod
+        self.send_content(content.encode(), "text/html", 404)  # missing parameter
+        # need to convert str message to bytes with encod
     
     
     def send_content(self, content, content_type, status=200):
